@@ -30,10 +30,10 @@ jobs:
       - name: Install vsce
         run: npm install -g @vscode/vsce
 
-      - name: Package extension
+      - name: Package extension (.vsix)
         run: |
           vsce package
-          echo "Generated VSIX:"
+          echo "VSIX artifact generated:"
           ls -lh *.vsix
 
       - name: Create GitHub Release
