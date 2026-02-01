@@ -24,6 +24,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Fix @types/vscode for vsce (CI only)
+        run: npm install --no-save @types/vscode@1.106.0
+
       - name: Remove test files (CI only)
         run: rm -rf src/test
 
@@ -36,7 +39,7 @@ jobs:
       - name: Package extension (.vsix)
         run: |
           vsce package
-          echo "Generated VSIX:"
+          echo "VSIX generated:"
           ls -lh *.vsix
 
       - name: Create GitHub Release
