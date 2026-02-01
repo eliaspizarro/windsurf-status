@@ -24,14 +24,14 @@ function fetchStatus(): Promise<any> {
                 try {
                     resolve(JSON.parse(data));
                 } catch {
-                    reject(new Error("Respuesta JSON inválida"));
+                    reject(new Error("Invalid JSON response"));
                 }
             });
         });
 
         req.on("timeout", () => {
             req.destroy();
-            reject(new Error("Tiempo de espera agotado"));
+            reject(new Error("Request timeout"));
         });
 
         req.on("error", reject);
@@ -55,7 +55,7 @@ function fetchSummary(): Promise<any> {
                 try {
                     resolve(JSON.parse(data));
                 } catch {
-                    reject(new Error("Respuesta JSON inválida"));
+                    reject(new Error("Invalid JSON response"));
                 }
             });
         });
@@ -88,7 +88,7 @@ async function checkStatus() {
                 lastError = true;
 
                 vscode.window.showErrorMessage(
-                    "Estado de Windsurf inválido (asumiendo caído)"
+                    "Invalid Windsurf status (assuming DOWN)"
                 );
             }
             return;
@@ -98,7 +98,7 @@ async function checkStatus() {
             lastError = false;
 
             vscode.window.showInformationMessage(
-                "El servicio de estado de Windsurf volvió a estar disponible"
+                "Windsurf status service reachable again"
             );
         }
 
@@ -107,7 +107,7 @@ async function checkStatus() {
 
             if (indicator !== "none") {
                 vscode.window.showErrorMessage(
-                    `Estado de Windsurf: ${description}`
+                    `Windsurf status: ${description}`
                 );
             }
         }
@@ -125,7 +125,7 @@ async function checkStatus() {
         for (const incident of incidents) {
             if (incident?.id && !lastIncidentIds.has(incident.id)) {
                 vscode.window.showWarningMessage(
-                    `Nuevo incidente: ${incident.name} (${incident.status})`
+                    `New incident: ${incident.name} (${incident.status})`
                 );
             }
         }
@@ -133,7 +133,7 @@ async function checkStatus() {
         for (const maintenance of maintenances) {
             if (maintenance?.id && !lastMaintenanceIds.has(maintenance.id)) {
                 vscode.window.showInformationMessage(
-                    `Nuevo mantenimiento: ${maintenance.name} (${maintenance.status})`
+                    `New maintenance: ${maintenance.name} (${maintenance.status})`
                 );
             }
         }
@@ -146,7 +146,7 @@ async function checkStatus() {
             lastError = true;
 
             vscode.window.showErrorMessage(
-                "No se pudo contactar el servicio de estado de Windsurf"
+                "Unable to reach Windsurf status service"
             );
         }
     }
