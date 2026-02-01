@@ -3,7 +3,7 @@ import https from "https";
 
 const STATUS_URL = "https://status.windsurf.com/api/v2/status.json";
 const SUMMARY_URL = "https://status.windsurf.com/api/v2/summary.json";
-const CHECK_INTERVAL_MS = 5 * 60 * 1000; // 5 minutos
+const CHECK_INTERVAL_MS = 1 * 60 * 1000; // 1 minuto
 
 let lastIndicator: string | null = null;
 let lastError = false;
@@ -81,6 +81,19 @@ async function checkStatus() {
             ? summaryData.scheduled_maintenances
             : [];
 
+        const validIndicators = new Set(["none", "minor", "major", "critical", "maintenance"]);
+
+        if (!indicator || !validIndicators.has(indicator)) {
+            if (!lastError) {
+                lastError = true;
+
+                vscode.window.showErrorMessage(
+                    "Estado de Windsurf inválido (asumiendo caído)"
+                );
+            }
+            return;
+        }
+
         if (lastError) {
             lastError = false;
 
@@ -89,11 +102,11 @@ async function checkStatus() {
             );
         }
 
-        if (indicator && indicator !== lastIndicator) {
-            lastIndicator = indicator === "none" ? null : indicator;
+        if (indicator !== lastIndicator) {
+            lastIndicator = indicator;
 
             if (indicator !== "none") {
-                vscode.window.showWarningMessage(
+                vscode.window.showErrorMessage(
                     `Estado de Windsurf: ${description}`
                 );
             }
