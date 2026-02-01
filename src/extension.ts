@@ -1,15 +1,18 @@
 import * as vscode from "vscode";
 import https from "https";
 
-const STATUS_URL = "https://status.windsurf.com/api/v2/status.json";
+const SUMMARY_URL = "https://status.windsurf.com/api/v2/summary.json";
 const CHECK_INTERVAL_MS = 5 * 60 * 1000; // 5 minutos
 
 let lastIndicator: string | null = null;
 let lastError: boolean = false;
+let initialized = false;
+let lastIncidentIds = new Set<string>();
+let lastMaintenanceIds = new Set<string>();
 
-function fetchStatus(): Promise<any> {
+function fetchSummary(): Promise<any> {
     return new Promise((resolve, reject) => {
-        const req = https.get(STATUS_URL, { timeout: 10000 }, res => {
+        const req = https.get(SUMMARY_URL, { timeout: 10000 }, res => {
             let data = "";
 
             res.on("data", chunk => {
@@ -34,16 +37,20 @@ function fetchStatus(): Promise<any> {
     });
 }
 
+function buildIdSet(items: Array<{ id?: string }>): Set<string> {
+    return new Set(items.map(item => item.id).filter((id): id is string => Boolean(id)));
+}
+
 async function checkStatus() {
     try {
-        const data = await fetchStatus();
+        const data = await fetchSummary();
 
         const indicator = data.status?.indicator;
         const description = data.status?.description;
-
-        if (!indicator) {
-            return;
-        }
+        const incidents = Array.isArray(data.incidents) ? data.incidents : [];
+        const maintenances = Array.isArray(data.scheduled_maintenances)
+            ? data.scheduled_maintenances
+            : [];
 
         if (lastError) {
             lastError = false;
@@ -53,18 +60,44 @@ async function checkStatus() {
             );
         }
 
-        if (indicator === "none") {
-            lastIndicator = null;
+        if (indicator && indicator !== lastIndicator) {
+            lastIndicator = indicator === "none" ? null : indicator;
+
+            if (indicator !== "none") {
+                vscode.window.showWarningMessage(
+                    `Windsurf status: ${description}`
+                );
+            }
+        }
+
+        const currentIncidentIds = buildIdSet(incidents);
+        const currentMaintenanceIds = buildIdSet(maintenances);
+
+        if (!initialized) {
+            lastIncidentIds = currentIncidentIds;
+            lastMaintenanceIds = currentMaintenanceIds;
+            initialized = true;
             return;
         }
 
-        if (indicator !== lastIndicator) {
-            lastIndicator = indicator;
-
-            vscode.window.showWarningMessage(
-                `Windsurf status: ${description}`
-            );
+        for (const incident of incidents) {
+            if (incident?.id && !lastIncidentIds.has(incident.id)) {
+                vscode.window.showWarningMessage(
+                    `New incident: ${incident.name} (${incident.status})`
+                );
+            }
         }
+
+        for (const maintenance of maintenances) {
+            if (maintenance?.id && !lastMaintenanceIds.has(maintenance.id)) {
+                vscode.window.showInformationMessage(
+                    `New maintenance: ${maintenance.name} (${maintenance.status})`
+                );
+            }
+        }
+
+        lastIncidentIds = currentIncidentIds;
+        lastMaintenanceIds = currentMaintenanceIds;
 
     } catch {
         if (!lastError) {
