@@ -1,18 +1,17 @@
 import * as vscode from "vscode";
 import https from "https";
 
-const SUMMARY_URL = "https://status.windsurf.com/api/v2/summary.json";
+const STATUS_URL = "https://status.windsurf.com/api/v2/status.json";
 const CHECK_INTERVAL_MS = 5 * 60 * 1000; // 5 minutos
 
-let lastIndicator: string | null = null;
-let lastError: boolean = false;
-let initialized = false;
-let lastIncidentIds = new Set<string>();
-let lastMaintenanceIds = new Set<string>();
+// null = estado desconocido (inicio)
+// true = caído
+// false = operativo
+let lastDownState: boolean | null = null;
 
-function fetchSummary(): Promise<any> {
+function fetchStatus(): Promise<any> {
     return new Promise((resolve, reject) => {
-        const req = https.get(SUMMARY_URL, { timeout: 10000 }, res => {
+        const req = https.get(STATUS_URL, { timeout: 10000 }, res => {
             let data = "";
 
             res.on("data", chunk => {
@@ -23,7 +22,7 @@ function fetchSummary(): Promise<any> {
                 try {
                     resolve(JSON.parse(data));
                 } catch {
-                    reject(new Error("Invalid JSON response"));
+                    reject(new Error("Invalid JSON"));
                 }
             });
         });
@@ -37,74 +36,53 @@ function fetchSummary(): Promise<any> {
     });
 }
 
-function buildIdSet(items: Array<{ id?: string }>): Set<string> {
-    return new Set(items.map(item => item.id).filter((id): id is string => Boolean(id)));
-}
-
 async function checkStatus() {
     try {
-        const data = await fetchSummary();
+        const data = await fetchStatus();
 
-        const indicator = data.status?.indicator;
-        const description = data.status?.description;
-        const incidents = Array.isArray(data.incidents) ? data.incidents : [];
-        const maintenances = Array.isArray(data.scheduled_maintenances)
-            ? data.scheduled_maintenances
-            : [];
+        const indicator: string | undefined = data.status?.indicator;
 
-        if (lastError) {
-            lastError = false;
-
-            vscode.window.showInformationMessage(
-                "Windsurf status service reachable again"
-            );
-        }
-
-        if (indicator && indicator !== lastIndicator) {
-            lastIndicator = indicator === "none" ? null : indicator;
-
-            if (indicator !== "none") {
-                vscode.window.showWarningMessage(
-                    `Windsurf status: ${description}`
-                );
-            }
-        }
-
-        const currentIncidentIds = buildIdSet(incidents);
-        const currentMaintenanceIds = buildIdSet(maintenances);
-
-        if (!initialized) {
-            lastIncidentIds = currentIncidentIds;
-            lastMaintenanceIds = currentMaintenanceIds;
-            initialized = true;
+        if (!indicator) {
             return;
         }
 
-        for (const incident of incidents) {
-            if (incident?.id && !lastIncidentIds.has(incident.id)) {
-                vscode.window.showWarningMessage(
-                    `New incident: ${incident.name} (${incident.status})`
-                );
-            }
+        const isDown = indicator !== "none";
+
+        // Primer chequeo: solo guardamos estado, NO notificamos
+        if (lastDownState === null) {
+            lastDownState = isDown;
+            return;
         }
 
-        for (const maintenance of maintenances) {
-            if (maintenance?.id && !lastMaintenanceIds.has(maintenance.id)) {
-                vscode.window.showInformationMessage(
-                    `New maintenance: ${maintenance.name} (${maintenance.status})`
-                );
-            }
-        }
-
-        lastIncidentIds = currentIncidentIds;
-        lastMaintenanceIds = currentMaintenanceIds;
-
-    } catch {
-        if (!lastError) {
-            lastError = true;
+        // Transición: OK → CAÍDO
+        if (!lastDownState && isDown) {
+            lastDownState = true;
 
             vscode.window.showErrorMessage(
-                "Unable to reach Windsurf status service"
+                "Windsurf service is DOWN"
+            );
+            return;
+        }
+
+        // Transición: CAÍDO → OK
+        if (lastDownState && !isDown) {
+            lastDownState = false;
+
+            vscode.window.showInformationMessage(
+                "Windsurf service is OPERATIONAL again"
+            );
+            return;
+        }
+
+        // Sin cambios → no hacer nada
+
+    } catch {
+        // Si no se puede consultar la API, lo tratamos como CAÍDO
+        if (lastDownState === false) {
+            lastDownState = true;
+
+            vscode.window.showErrorMessage(
+                "Windsurf status service unreachable (assuming DOWN)"
             );
         }
     }
