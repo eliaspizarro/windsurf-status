@@ -4,7 +4,7 @@
   "description": "Shows notifications inside Windsurf when the service status changes",
   "version": "0.0.1",
   "engines": {
-  "vscode": "^1.106.0"
+    "vscode": "^1.106.0"
   },
   "categories": ["Other"],
   "activationEvents": [
@@ -17,7 +17,7 @@
     "watch": "tsc -watch -p ./"
   },
   "devDependencies": {
-    "@types/vscode": "^1.108.1",
+    "@types/vscode": "^1.106.0",
     "@types/node": "22.x",
     "typescript": "^5.9.3"
   }

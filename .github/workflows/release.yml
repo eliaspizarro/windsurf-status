@@ -24,21 +24,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Restore @types/vscode for build
-        run: npm install --no-save @types/vscode@1.108.1
-
-      - name: Remove test files (CI only)
-        run: rm -rf src/test
-
       - name: Compile extension
         run: npm run compile
-
-      - name: Prepare packaging environment
-        run: |
-          # Remove dev typings so vsce sees only compatible versions
-          npm remove @types/vscode || true
-          # just in case, verify removal
-          npm ls @types/vscode || echo "no @types/vscode"
 
       - name: Install vsce
         run: npm install -g @vscode/vsce
