@@ -33,6 +33,7 @@ jobs:
       - name: Package extension
         run: |
           vsce package
+          echo "Generated VSIX:"
           ls -lh *.vsix
 
       - name: Create GitHub Release
