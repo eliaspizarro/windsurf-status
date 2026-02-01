@@ -1,26 +1,68 @@
-// The module 'vscode' contains the VS Code extensibility API
-// Import the module and reference it with the alias vscode in your code below
-import * as vscode from 'vscode';
+import * as vscode from "vscode";
+import https from "https";
 
-// This method is called when your extension is activated
-// Your extension is activated the very first time the command is executed
-export function activate(context: vscode.ExtensionContext) {
+const STATUS_URL = "https://status.windsurf.com/api/v2/status.json";
+const CHECK_INTERVAL_MS = 5 * 60 * 1000; // 5 minutos
 
-	// Use the console to output diagnostic information (console.log) and errors (console.error)
-	// This line of code will only be executed once when your extension is activated
-	console.log('Congratulations, your extension "windsurf-status" is now active!');
+let lastIndicator: string | null = null;
 
-	// The command has been defined in the package.json file
-	// Now provide the implementation of the command with registerCommand
-	// The commandId parameter must match the command field in package.json
-	const disposable = vscode.commands.registerCommand('windsurf-status.helloWorld', () => {
-		// The code you place here will be executed every time your command is executed
-		// Display a message box to the user
-		vscode.window.showInformationMessage('Hello World from windsurf-status!');
-	});
+function fetchStatus(): Promise<any> {
+    return new Promise((resolve, reject) => {
+        https.get(STATUS_URL, res => {
+            let data = "";
 
-	context.subscriptions.push(disposable);
+            res.on("data", chunk => {
+                data += chunk;
+            });
+
+            res.on("end", () => {
+                try {
+                    resolve(JSON.parse(data));
+                } catch (e) {
+                    reject(e);
+                }
+            });
+        }).on("error", reject);
+    });
 }
 
-// This method is called when your extension is deactivated
+async function checkStatus() {
+    try {
+        const data = await fetchStatus();
+
+        const indicator = data.status?.indicator;
+        const description = data.status?.description;
+
+        if (!indicator) {
+            return;
+        }
+
+        if (indicator !== "none" && indicator !== lastIndicator) {
+            lastIndicator = indicator;
+
+            vscode.window.showWarningMessage(
+                `Windsurf status: ${description}`
+            );
+        }
+
+        if (indicator === "none") {
+            lastIndicator = null;
+        }
+    } catch {
+        vscode.window.showErrorMessage(
+            "Windsurf status check failed"
+        );
+    }
+}
+
+export function activate(context: vscode.ExtensionContext) {
+    checkStatus();
+
+    const timer = setInterval(checkStatus, CHECK_INTERVAL_MS);
+
+    context.subscriptions.push({
+        dispose: () => clearInterval(timer)
+    });
+}
+
 export function deactivate() {}
