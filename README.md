@@ -1,6 +1,6 @@
 # Windsurf Status Monitor
 
-A lightweight Windsurf extension that uses the official health check as the primary source of truth, then checks the status summary endpoint to show native editor notifications when the service status changes.
+A lightweight Windsurf extension that uses the Windsurf status indicator as the primary source of truth, then checks the status summary endpoint to show native editor notifications when the service status changes.
 
 The extension runs automatically in the background and does not require manual interaction.
 
@@ -8,7 +8,7 @@ The extension runs automatically in the background and does not require manual i
 
 ## Features
 
-- Uses the Windsurf health check (HTTP 200) as the primary source of truth
+- Uses the Windsurf status indicator as the primary source of truth (none/minor/major/critical/maintenance)
 - Periodically checks the Windsurf status summary
 - Shows notifications for:
   - New incidents
