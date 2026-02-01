@@ -2,6 +2,11 @@
   "name": "windsurf-status",
   "displayName": "windsurf-status",
   "description": "Shows notifications inside Windsurf when the service status changes",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/eliaspizarro/windsurf-status.git"
+  },
+  "license": "MIT",
   "version": "0.0.1",
   "engines": {
     "vscode": "^1.106.0"
